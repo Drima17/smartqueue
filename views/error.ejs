@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Error</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <nav class="sq-navbar">
+    <a href="/" class="sq-navbar-brand">
+      <div class="sq-navbar-logo">🏥</div>
+      <div>
+        <span class="sq-navbar-title">SmartQueue</span>
+        <span class="sq-navbar-subtitle">Hospital Queue System</span>
+      </div>
+    </a>
+    <% if (user) { %>
+      <div class="sq-navbar-right">
+        <a href="/<%= user.role %>" class="sq-btn sq-btn-ghost sq-btn-sm">
+          ← Back to Dashboard
+        </a>
+      </div>
+    <% } %>
+  </nav>
+
+  <div class="sq-page" style="max-width:560px;margin-top:4rem;text-align:center;">
+    <div style="font-size:3.5rem;margin-bottom:1rem;">⚠️</div>
+    <h1 style="font-size:1.5rem;margin-bottom:0.75rem;">Something went wrong</h1>
+    <p class="text-muted" style="margin-bottom:2rem;"><%= message %></p>
+    <div style="display:flex;gap:1rem;justify-content:center;">
+      <a href="javascript:history.back()" class="sq-btn sq-btn-ghost">← Go Back</a>
+      <a href="/login" class="sq-btn sq-btn-primary">Go to Login</a>
+    </div>
+  </div>
+
+</body>
+</html>

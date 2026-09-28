@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Receptionist</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="receptionist" data-dept-id="<%= departments.length > 0 ? departments[0].department_id : '' %>">
+
+  <!-- Navbar -->
+  <nav class="sq-navbar">
+    <a href="/receptionist" class="sq-navbar-brand">
+      <div class="sq-navbar-logo">🏥</div>
+      <div>
+        <span class="sq-navbar-title">SmartQueue</span>
+        <span class="sq-navbar-subtitle">Receptionist Dashboard</span>
+      </div>
+    </a>
+    <div class="sq-navbar-right">
+      <span id="sq-live-indicator" class="sq-live-badge">
+        <span class="sq-live-dot"></span> LIVE
+      </span>
+      <div class="sq-user-pill">
+        <div class="sq-user-avatar">
+          <%= user.name.charAt(0).toUpperCase() %>
+        </div>
+        <div>
+          <div class="sq-user-name"><%= user.name %></div>
+          <div class="sq-user-role"><%= user.role %></div>
+        </div>
+      </div>
+      <a href="/logout" class="sq-btn sq-btn-ghost sq-btn-sm">Sign Out</a>
+    </div>
+  </nav>
+
+  <div class="sq-page">
+
+    <!-- Page header -->
+    <div class="sq-page-header">
+      <h1>Patient Registration</h1>
+      <p>Register walk-in patients and manage the outpatient queue</p>
+    </div>
+
+    <!-- Flash messages -->
+    <% if (error && error.length > 0) { %>
+      <div class="sq-alert sq-alert-error">⚠ <%= error %></div>
+    <% } %>
+
+    <% if (registered && newToken && newQnum) { %>
+      <div style="
+        background:#F0FDF4;
+        border:2px solid #0F9D58;
+        border-radius:10px;
+        padding:1.25rem 1.5rem;
+        margin-bottom:1.5rem;
+      ">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.85rem;">
+          <span style="font-size:1.3rem;">✅</span>
+          <strong style="color:#065F46;font-size:1rem;">Patient Registered Successfully</strong>
+        </div>
+        <div style="
+          display:inline-block;
+          background:#0F9D58;
+          color:white;
+          font-family:'JetBrains Mono',monospace;
+          font-size:1.6rem;
+          font-weight:700;
+          padding:0.4rem 1.1rem;
+          border-radius:8px;
+          margin-bottom:1rem;
+          letter-spacing:0.12em;
+        ">
+          Queue No: <%= String(newQnum).padStart(3,'0') %>
+        </div>
+        <div style="margin-top:0.25rem;">
+          <p style="font-size:0.83rem;color:#065F46;font-weight:600;margin-bottom:0.45rem;">
+            📱 Patient Self-Tracking URL — Share this link with the patient:
+          </p>
+          <div style="
+            display:flex;align-items:center;gap:0.75rem;
+            background:white;border:1.5px solid #0F9D58;
+            border-radius:7px;padding:0.5rem 0.85rem;flex-wrap:wrap;
+          ">
+            <code style="font-size:0.85rem;color:#0057B8;word-break:break-all;flex:1;">
+              http://localhost:3000/track/<%= newToken %>
+            </code>
+            <a href="/track/<%= newToken %>" target="_blank" style="
+              background:#0057B8;color:white;padding:0.35rem 0.9rem;
+              border-radius:5px;text-decoration:none;font-size:0.82rem;
+              font-weight:600;white-space:nowrap;
+            ">Open ↗</a>
+          </div>
+        </div>
+
+        <!-- QR Code -->
+        <div style="margin-top:1rem;">
+          <p style="font-size:0.83rem;color:#065F46;font-weight:600;margin-bottom:0.5rem;">
+            📷 QR Code — Patient can scan this with their phone camera:
+          </p>
+          <div style="
+            background:white;
+            border:1.5px solid #0F9D58;
+            border-radius:8px;
+            padding:1rem;
+            display:flex;
+            align-items:center;
+            gap:1.5rem;
+            flex-wrap:wrap;
+          ">
+            <img
+              id="qr-code-img"
+              src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=http://localhost:3000/track/<%= newToken %>"
+              alt="QR Code for patient tracking"
+              style="width:180px;height:180px;border-radius:6px;border:1px solid #E2E8F0;"
+            >
+            <div>
+              <p style="font-size:0.85rem;font-weight:600;color:#065F46;margin-bottom:0.5rem;">
+                How to use:
+              </p>
+              <ul style="font-size:0.82rem;color:#374151;margin:0;padding-left:1.2rem;line-height:1.8;">
+                <li>Show this QR code to the patient</li>
+                <li>Patient opens their phone camera</li>
+                <li>Point camera at the QR code</li>
+                <li>Tap the link that appears</li>
+                <li>Their tracking page opens instantly</li>
+              </ul>
+              <p style="font-size:0.78rem;color:#6B7280;margin-top:0.6rem;">
+                ℹ️ Works on all Android and iPhone cameras — no app needed
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
+    <div style="display:grid;grid-template-columns:380px 1fr;gap:1.5rem;align-items:start;">
+
+      <!-- Registration form card -->
+      <div class="sq-card">
+        <div class="sq-card-header">
+          <h3>Register New Patient</h3>
+        </div>
+        <div class="sq-card-body">
+          <form method="POST" action="/receptionist/register" autocomplete="off">
+
+            <div class="sq-form-group">
+              <label class="sq-label" for="name">Full Name *</label>
+              <input class="sq-input" type="text" id="name" name="name"
+                     placeholder="Patient full name" required>
+            </div>
+
+            <div class="sq-form-row">
+              <div class="sq-form-group">
+                <label class="sq-label" for="age">Age *</label>
+                <input class="sq-input" type="number" id="age" name="age"
+                       placeholder="Age" min="1" max="120" required>
+              </div>
+              <div class="sq-form-group">
+                <label class="sq-label" for="sex">Sex *</label>
+                <select class="sq-select" id="sex" name="sex" required>
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="sq-form-group">
+              <label class="sq-label" for="phone">Phone Number</label>
+              <input class="sq-input" type="tel" id="phone" name="phone"
+                     placeholder="e.g. 08012345678">
+            </div>
+
+            <div class="sq-form-group">
+              <label class="sq-label" for="department_id">Department *</label>
+              <select class="sq-select" id="department_id" name="department_id" required>
+                <option value="">Select Department</option>
+                <% departments.forEach(dept => { %>
+                  <option value="<%= dept.department_id %>"><%= dept.name %></option>
+                <% }) %>
+              </select>
+            </div>
+
+            <div class="sq-form-group">
+              <label class="sq-label" for="complaint">Presenting Complaint</label>
+              <textarea class="sq-textarea" id="complaint" name="complaint"
+                        placeholder="Brief description of patient's complaint"></textarea>
+            </div>
+
+            <button type="submit" class="sq-btn sq-btn-primary w-100">
+              Register Patient &amp; Generate Queue Number
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Queue table card -->
+      <div class="sq-card">
+        <div class="sq-card-header">
+          <h3>Today's Queue</h3>
+          <span id="sq-live-indicator2" class="sq-live-badge">
+            <span class="sq-live-dot"></span> Updates automatically
+          </span>
+        </div>
+
+        <div class="sq-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+          <table class="sq-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Patient Name</th>
+                <th>Department</th>
+                <th>Complaint</th>
+                <th>Status</th>
+                <th>Est. Wait</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="queue-tbody">
+              <% if (queue.length === 0) { %>
+                <tr>
+                  <td colspan="7" class="text-center text-muted" style="padding:2rem;">
+                    No patients registered today yet
+                  </td>
+                </tr>
+              <% } else { %>
+                <% queue.forEach(entry => { %>
+                  <tr class="<%= entry.status === 'called' ? 'row-called' : 'row-waiting' %>">
+                    <td class="queue-number">
+                      <%= String(entry.queue_number).padStart(3,'0') %>
+                    </td>
+                    <td><%= entry.patient_name %></td>
+                    <td><%= entry.department_name %></td>
+                    <td>
+                      <%= entry.complaint
+                            ? entry.complaint.substring(0,40) + (entry.complaint.length > 40 ? '…' : '')
+                            : '—' %>
+                    </td>
+                    <td>
+                      <% if (entry.status === 'waiting') { %>
+                        <span class="sq-badge sq-badge-waiting">Waiting</span>
+                      <% } else if (entry.status === 'called') { %>
+                        <span class="sq-badge sq-badge-called">▶ Called</span>
+                      <% } %>
+                    </td>
+                    <td class="font-mono text-muted">
+                      <% if (entry.status === 'called') { %>
+                        — In consult
+                      <% } else { %>
+                        <%= entry.est_wait > 0 ? '~' + entry.est_wait + ' min' : '< 1 min' %>
+                      <% } %>
+                    </td>
+                    <td>
+                      <form method="POST" action="/receptionist/cancel"
+                            onsubmit="return confirm('Cancel this queue entry?')">
+                        <input type="hidden" name="entry_id"
+                               value="<%= entry.entry_id %>">
+                        <input type="hidden" name="department_id"
+                               value="<%= entry.department_id %>">
+                        <button type="submit"
+                                class="sq-btn sq-btn-danger sq-btn-sm">
+                          Cancel
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket-client.js"></script>
+</body>
+</html>

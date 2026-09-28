@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Login</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="login">
+
+  <div class="sq-login-page">
+    <div class="sq-login-card">
+
+      <!-- Logo -->
+      <div class="sq-login-logo">
+        <div class="sq-login-logo-icon">🏥</div>
+        <h1>SmartQueue</h1>
+        <p>Hospital Outpatient Queue Management System<br>
+           <span style="color:var(--sq-accent);font-weight:600;">Delta State University Teaching Hospital</span>
+        </p>
+      </div>
+
+      <!-- Error message -->
+      <% if (error) { %>
+        <div style="
+          background:#FEF2F2;
+          border:2px solid #DC2626;
+          border-radius:8px;
+          padding:0.85rem 1rem;
+          margin-bottom:1.25rem;
+          display:flex;
+          align-items:flex-start;
+          gap:0.6rem;
+        ">
+          <span style="font-size:1.1rem;flex-shrink:0;">⚠️</span>
+          <div>
+            <p style="font-size:0.88rem;font-weight:600;color:#991B1B;margin:0;">Login Failed</p>
+            <p style="font-size:0.84rem;color:#991B1B;margin:0.2rem 0 0 0;"><%= error %></p>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Success message -->
+      <% if (success) { %>
+        <div class="sq-alert sq-alert-success mb-2">
+          ✓ <%= success %>
+        </div>
+      <% } %>
+
+      <!-- Login form -->
+      <form method="POST" action="/login" autocomplete="off">
+        <div class="sq-form-group">
+          <label class="sq-label" for="username">Username</label>
+          <input
+            class="sq-input"
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Enter your username"
+            required
+            autofocus
+          >
+        </div>
+
+        <div class="sq-form-group">
+          <label class="sq-label" for="password">Password</label>
+          <input
+            class="sq-input"
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="sq-btn sq-btn-primary sq-btn-lg w-100 mt-2">
+          Sign In
+        </button>
+      </form>
+
+      <p class="text-center text-muted mt-3" style="font-size:0.78rem;">
+        For patient self-tracking, use the link provided on your queue slip.
+      </p>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket-client.js"></script>
+</body>
+</html>

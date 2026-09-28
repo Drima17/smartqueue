@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Doctor Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body
+  data-page="doctor"
+  data-dept-id="<%= user.department_id %>"
+>
+
+  <!-- Navbar -->
+  <nav class="sq-navbar">
+    <a href="/doctor" class="sq-navbar-brand">
+      <div class="sq-navbar-logo">🏥</div>
+      <div>
+        <span class="sq-navbar-title">SmartQueue</span>
+        <span class="sq-navbar-subtitle">Doctor Dashboard</span>
+      </div>
+    </a>
+    <div class="sq-navbar-right">
+      <span id="sq-live-indicator" class="sq-live-badge">
+        <span class="sq-live-dot"></span> LIVE
+      </span>
+      <div class="sq-user-pill">
+        <div class="sq-user-avatar">
+          <%= user.name.charAt(0).toUpperCase() %>
+        </div>
+        <div>
+          <div class="sq-user-name">Dr. <%= user.name %></div>
+          <div class="sq-user-role"><%= user.department_name %></div>
+        </div>
+      </div>
+      <a href="/logout" class="sq-btn sq-btn-ghost sq-btn-sm">Sign Out</a>
+    </div>
+  </nav>
+
+  <div class="sq-page">
+
+    <!-- Page header -->
+    <div class="sq-page-header">
+      <h1>Doctor Dashboard</h1>
+      <p>
+        Department: <strong><%= user.department_name %></strong> &nbsp;|&nbsp;
+        <%= new Date().toLocaleDateString('en-NG', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) %>
+      </p>
+    </div>
+
+    <!-- Flash messages -->
+    <% if (error && error.length > 0) { %>
+      <div class="sq-alert sq-alert-error">⚠ <%= error %></div>
+    <% } %>
+    <% if (success && success.length > 0) { %>
+      <div class="sq-alert sq-alert-success">✓ <%= success %></div>
+    <% } %>
+
+    <!-- Stats row -->
+    <div class="sq-stats-grid">
+      <div class="sq-stat-card">
+        <div class="sq-stat-value"><%= queue.filter(q => q.status === 'waiting').length %></div>
+        <div class="sq-stat-label">Patients Waiting</div>
+      </div>
+      <div class="sq-stat-card amber">
+        <div class="sq-stat-value"><%= queue.filter(q => q.status === 'called').length %></div>
+        <div class="sq-stat-label">In Consultation</div>
+      </div>
+      <div class="sq-stat-card green">
+        <div class="sq-stat-value"><%= stats.total_seen || 0 %></div>
+        <div class="sq-stat-label">Seen Today</div>
+      </div>
+      <div class="sq-stat-card">
+        <div class="sq-stat-value">
+          <%= stats.avg_duration ? Math.round(stats.avg_duration) + 'm' : '—' %>
+        </div>
+        <div class="sq-stat-label">Avg. Consult Time</div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="sq-card mb-2">
+      <div class="sq-card-body" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+        <form method="POST" action="/doctor/call-next">
+          <button type="submit" class="sq-btn sq-btn-primary sq-btn-lg"
+            <%= queue.filter(q=>q.status==='waiting').length === 0 ? 'disabled' : '' %>>
+            ▶ Call Next Patient
+          </button>
+        </form>
+        <p class="text-muted" style="font-size:0.85rem;margin:0;">
+          Click "Call Next Patient" to call the next person in the queue.
+          Their status will update on all screens instantly.
+        </p>
+      </div>
+    </div>
+
+    <!-- Queue table -->
+    <div class="sq-card">
+      <div class="sq-card-header">
+        <h3>Current Queue — <%= user.department_name %></h3>
+        <span class="sq-live-badge">
+          <span class="sq-live-dot"></span> Real-time
+        </span>
+      </div>
+      <div class="sq-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+        <table class="sq-table">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Patient Name</th>
+              <th>Age / Sex</th>
+              <th>Complaint</th>
+              <th>Status</th>
+              <th>Est. Wait</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="queue-tbody">
+            <% if (queue.length === 0) { %>
+              <tr>
+                <td colspan="7" class="text-center text-muted" style="padding:2.5rem;">
+                  No patients in the queue right now
+                </td>
+              </tr>
+            <% } else { %>
+              <% queue.forEach(entry => { %>
+                <tr class="<%= entry.status === 'called' ? 'row-called' : 'row-waiting' %>">
+                  <td class="queue-number">
+                    <%= String(entry.queue_number).padStart(3,'0') %>
+                  </td>
+                  <td><%= entry.patient_name %></td>
+                  <td class="text-muted"><%= entry.age %> / <%= entry.sex.charAt(0) %></td>
+                  <td>
+                    <%= entry.complaint
+                          ? entry.complaint.substring(0,50) + (entry.complaint.length>50?'…':'')
+                          : '—' %>
+                  </td>
+                  <td>
+                    <% if (entry.status === 'waiting') { %>
+                      <span class="sq-badge sq-badge-waiting">Waiting</span>
+                    <% } else if (entry.status === 'called') { %>
+                      <span class="sq-badge sq-badge-called">▶ Called</span>
+                    <% } %>
+                  </td>
+                  <td class="font-mono text-muted">
+                    <% if (entry.status === 'called') { %>
+                      — In consult
+                    <% } else { %>
+                      <%= entry.est_wait > 0 ? '~' + entry.est_wait + ' min' : '< 1 min' %>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (entry.status === 'called') { %>
+                      <!-- Mark as seen with optional notes modal trigger -->
+                      <button
+                        class="sq-btn sq-btn-success sq-btn-sm"
+                        onclick="openSeenModal(<%= entry.entry_id %>)">
+                        ✓ Mark Seen
+                      </button>
+                    <% } else { %>
+                      <span class="text-muted" style="font-size:0.8rem;">—</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mark as Seen Modal -->
+  <div class="sq-modal-backdrop" id="seen-modal">
+    <div class="sq-modal">
+      <div class="sq-modal-header">
+        <h3>Complete Consultation</h3>
+        <button class="sq-modal-close" onclick="closeSeenModal()">✕</button>
+      </div>
+      <form method="POST" action="/doctor/mark-seen">
+        <div class="sq-modal-body">
+          <input type="hidden" name="entry_id" id="modal-entry-id">
+          <div class="sq-form-group">
+            <label class="sq-label" for="notes">Consultation Notes (optional)</label>
+            <textarea class="sq-textarea" id="notes" name="notes"
+                      placeholder="Brief notes on diagnosis or treatment..."
+                      style="min-height:100px;"></textarea>
+          </div>
+          <p class="text-muted" style="font-size:0.82rem;">
+            Marking this patient as seen will update the queue and
+            recalculate estimated wait times for all remaining patients.
+          </p>
+        </div>
+        <div class="sq-modal-footer">
+          <button type="button" class="sq-btn sq-btn-ghost"
+                  onclick="closeSeenModal()">Cancel</button>
+          <button type="submit" class="sq-btn sq-btn-success">
+            ✓ Confirm — Mark as Seen
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket-client.js"></script>
+  <script>
+    function openSeenModal(entryId) {
+      document.getElementById('modal-entry-id').value = entryId;
+      document.getElementById('seen-modal').classList.add('open');
+    }
+    function closeSeenModal() {
+      document.getElementById('seen-modal').classList.remove('open');
+    }
+    // Close modal on backdrop click
+    document.getElementById('seen-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeSeenModal();
+    });
+  </script>
+</body>
+</html>

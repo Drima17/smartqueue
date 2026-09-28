@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Admin Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-page="admin">
+
+  <!-- Navbar -->
+  <nav class="sq-navbar">
+    <a href="/admin" class="sq-navbar-brand">
+      <div class="sq-navbar-logo">🏥</div>
+      <div>
+        <span class="sq-navbar-title">SmartQueue</span>
+        <span class="sq-navbar-subtitle">Admin Dashboard</span>
+      </div>
+    </a>
+    <div class="sq-navbar-right">
+      <div class="sq-user-pill">
+        <div class="sq-user-avatar">
+          <%= user.name.charAt(0).toUpperCase() %>
+        </div>
+        <div>
+          <div class="sq-user-name"><%= user.name %></div>
+          <div class="sq-user-role">Administrator</div>
+        </div>
+      </div>
+      <a href="/display" target="_blank" class="sq-btn sq-btn-ghost sq-btn-sm">
+        📺 Display Screen
+      </a>
+      <a href="/logout" class="sq-btn sq-btn-ghost sq-btn-sm">Sign Out</a>
+    </div>
+  </nav>
+
+  <div class="sq-page">
+
+    <div class="sq-page-header">
+      <h1>System Overview</h1>
+      <p>Today — <%= new Date().toLocaleDateString('en-NG',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) %></p>
+    </div>
+
+    <!-- Flash messages -->
+    <% if (error && error.length > 0) { %>
+      <div class="sq-alert sq-alert-error">⚠ <%= error %></div>
+    <% } %>
+    <% if (success && success.length > 0) { %>
+      <div class="sq-alert sq-alert-success">✓ <%= success %></div>
+    <% } %>
+
+    <!-- Today's stats -->
+    <div class="sq-stats-grid">
+      <div class="sq-stat-card">
+        <div class="sq-stat-value"><%= stats.total %></div>
+        <div class="sq-stat-label">Total Registered Today</div>
+      </div>
+      <div class="sq-stat-card green">
+        <div class="sq-stat-value"><%= stats.seen %></div>
+        <div class="sq-stat-label">Patients Seen</div>
+      </div>
+      <div class="sq-stat-card amber">
+        <div class="sq-stat-value"><%= stats.waiting %></div>
+        <div class="sq-stat-label">Currently Waiting</div>
+      </div>
+      <div class="sq-stat-card">
+        <div class="sq-stat-value"><%= stats.avgWait > 0 ? stats.avgWait + 'm' : '—' %></div>
+        <div class="sq-stat-label">Avg. Consult Time</div>
+      </div>
+    </div>
+
+    <!-- Department performance -->
+    <div class="sq-card mb-3">
+      <div class="sq-card-header">
+        <h3>Department Performance — Today</h3>
+      </div>
+      <div class="sq-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+        <table class="sq-table">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Total Registered</th>
+              <th>Seen</th>
+              <th>Waiting</th>
+              <th>Avg. Consult Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (deptStats.length === 0) { %>
+              <tr>
+                <td colspan="5" class="text-center text-muted" style="padding:1.5rem;">
+                  No data yet today
+                </td>
+              </tr>
+            <% } else { %>
+              <% deptStats.forEach(dept => { %>
+                <tr>
+                  <td class="fw-600"><%= dept.department_name %></td>
+                  <td class="font-mono"><%= dept.total || 0 %></td>
+                  <td class="text-green font-mono"><%= dept.seen || 0 %></td>
+                  <td class="font-mono"><%= dept.waiting || 0 %></td>
+                  <td class="text-muted font-mono">
+                    <%= dept.avg_duration ? Math.round(dept.avg_duration) + ' min' : '—' %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+      <!-- Manage Departments -->
+      <div class="sq-card">
+        <div class="sq-card-header">
+          <h3>Departments</h3>
+          <button class="sq-btn sq-btn-primary sq-btn-sm"
+                  onclick="document.getElementById('add-dept-modal').classList.add('open')">
+            + Add Department
+          </button>
+        </div>
+        <div class="sq-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+          <table class="sq-table">
+            <thead>
+              <tr><th>Name</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <% departments.forEach(dept => { %>
+                <tr>
+                  <td class="fw-600"><%= dept.name %></td>
+                  <td>
+                    <% if (dept.is_active) { %>
+                      <span class="sq-badge sq-badge-seen">Active</span>
+                    <% } else { %>
+                      <span class="sq-badge sq-badge-cancelled">Inactive</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="POST" action="/admin/departments/toggle" style="display:inline">
+                      <input type="hidden" name="department_id" value="<%= dept.department_id %>">
+                      <input type="hidden" name="is_active" value="<%= dept.is_active %>">
+                      <button type="submit" class="sq-btn sq-btn-ghost sq-btn-sm">
+                        <%= dept.is_active ? 'Deactivate' : 'Activate' %>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Manage Users -->
+      <div class="sq-card">
+        <div class="sq-card-header">
+          <h3>System Users</h3>
+          <button class="sq-btn sq-btn-primary sq-btn-sm"
+                  onclick="document.getElementById('add-user-modal').classList.add('open')">
+            + Add User
+          </button>
+        </div>
+        <div class="sq-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+          <table class="sq-table">
+            <thead>
+              <tr><th>Name</th><th>Role</th><th>Department</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <% users.forEach(u => { %>
+                <tr>
+                  <td class="fw-600"><%= u.name %></td>
+                  <td style="text-transform:capitalize"><%= u.role %></td>
+                  <td class="text-muted"><%= u.department_name || '—' %></td>
+                  <td>
+                    <% if (u.is_active) { %>
+                      <span class="sq-badge sq-badge-seen">Active</span>
+                    <% } else { %>
+                      <span class="sq-badge sq-badge-cancelled">Inactive</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <form method="POST" action="/admin/users/toggle" style="display:inline">
+                      <input type="hidden" name="user_id" value="<%= u.user_id %>">
+                      <input type="hidden" name="is_active" value="<%= u.is_active %>">
+                      <button type="submit" class="sq-btn sq-btn-ghost sq-btn-sm">
+                        <%= u.is_active ? 'Deactivate' : 'Activate' %>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Department Modal -->
+  <div class="sq-modal-backdrop" id="add-dept-modal">
+    <div class="sq-modal">
+      <div class="sq-modal-header">
+        <h3>Add New Department</h3>
+        <button class="sq-modal-close"
+          onclick="document.getElementById('add-dept-modal').classList.remove('open')">✕</button>
+      </div>
+      <form method="POST" action="/admin/departments/create">
+        <div class="sq-modal-body">
+          <div class="sq-form-group">
+            <label class="sq-label">Department Name *</label>
+            <input class="sq-input" type="text" name="name"
+                   placeholder="e.g. General Outpatient" required autofocus>
+          </div>
+        </div>
+        <div class="sq-modal-footer">
+          <button type="button" class="sq-btn sq-btn-ghost"
+            onclick="document.getElementById('add-dept-modal').classList.remove('open')">
+            Cancel
+          </button>
+          <button type="submit" class="sq-btn sq-btn-primary">Create Department</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add User Modal -->
+  <div class="sq-modal-backdrop" id="add-user-modal">
+    <div class="sq-modal">
+      <div class="sq-modal-header">
+        <h3>Add New User</h3>
+        <button class="sq-modal-close"
+          onclick="document.getElementById('add-user-modal').classList.remove('open')">✕</button>
+      </div>
+      <form method="POST" action="/admin/users/create">
+        <div class="sq-modal-body">
+          <div class="sq-form-group">
+            <label class="sq-label">Full Name *</label>
+            <input class="sq-input" type="text" name="name" placeholder="Full name" required>
+          </div>
+          <div class="sq-form-row">
+            <div class="sq-form-group">
+              <label class="sq-label">Username *</label>
+              <input class="sq-input" type="text" name="username" placeholder="login username" required>
+            </div>
+            <div class="sq-form-group">
+              <label class="sq-label">Password *</label>
+              <input class="sq-input" type="password" name="password" placeholder="password" required>
+            </div>
+          </div>
+          <div class="sq-form-row">
+            <div class="sq-form-group">
+              <label class="sq-label">Role *</label>
+              <select class="sq-select" name="role" required>
+                <option value="">Select role</option>
+                <option value="receptionist">Receptionist</option>
+                <option value="doctor">Doctor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="sq-form-group">
+              <label class="sq-label">Department (Doctors only)</label>
+              <select class="sq-select" name="department_id">
+                <option value="">— None —</option>
+                <% departments.filter(d => d.is_active).forEach(dept => { %>
+                  <option value="<%= dept.department_id %>"><%= dept.name %></option>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="sq-modal-footer">
+          <button type="button" class="sq-btn sq-btn-ghost"
+            onclick="document.getElementById('add-user-modal').classList.remove('open')">
+            Cancel
+          </button>
+          <button type="submit" class="sq-btn sq-btn-primary">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket-client.js"></script>
+  <script>
+    // Close modals on backdrop click
+    document.querySelectorAll('.sq-modal-backdrop').forEach(backdrop => {
+      backdrop.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+      });
+    });
+  </script>
+</body>
+</html>

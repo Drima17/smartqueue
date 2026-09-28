@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Track My Queue</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body
+  data-page="track"
+  data-token="<%= token %>"
+  data-dept-id="<%= entry.department_id %>"
+>
+
+  <!-- Minimal navbar for patients -->
+  <nav class="sq-navbar">
+    <div class="sq-navbar-brand">
+      <div class="sq-navbar-logo">🏥</div>
+      <div>
+        <span class="sq-navbar-title">SmartQueue</span>
+        <span class="sq-navbar-subtitle">Patient Queue Tracker</span>
+      </div>
+    </div>
+    <div class="sq-navbar-right">
+      <span id="sq-live-indicator" class="sq-live-badge">
+        <span class="sq-live-dot"></span> LIVE
+      </span>
+    </div>
+  </nav>
+
+  <div class="sq-page" style="max-width:780px;">
+
+    <!-- Status hero card -->
+    <div
+      id="track-hero"
+      class="sq-track-hero<%= entry.status === 'called' ? ' status-called' : entry.status === 'seen' ? ' status-seen' : '' %>"
+    >
+      <!-- Queue number -->
+      <div class="sq-track-label">YOUR QUEUE NUMBER</div>
+      <div class="sq-track-number queue-number">
+        <%= String(entry.queue_number).padStart(3, '0') %>
+      </div>
+
+      <!-- Status message -->
+      <p id="track-status" style="margin-top:0.6rem;font-size:0.95rem;opacity:0.92;font-weight:500;">
+        <% if (entry.status === 'waiting') { %>
+          Please wait — you will be called when it is your turn.
+        <% } else if (entry.status === 'called') { %>
+          ▶ YOU ARE BEING CALLED — Please proceed to the consultation room now.
+        <% } else if (entry.status === 'seen') { %>
+          ✓ Consultation complete. Thank you for your visit.
+        <% } else { %>
+          This queue entry has been cancelled.
+        <% } %>
+      </p>
+
+      <!-- Info grid -->
+      <% if (entry.status === 'waiting' || entry.status === 'called') { %>
+      <div class="sq-track-info-grid">
+        <div class="sq-track-info-item">
+          <div class="sq-track-label">PATIENTS AHEAD</div>
+          <div class="sq-track-info-value" id="track-ahead">
+            <%= patientsAhead %>
+          </div>
+        </div>
+        <div class="sq-track-info-item">
+          <div class="sq-track-label">YOUR POSITION</div>
+          <div class="sq-track-info-value" id="track-position">
+            <%= myPosition + 1 %>
+          </div>
+        </div>
+        <div class="sq-track-info-item">
+          <div class="sq-track-label">EST. WAIT</div>
+          <div class="sq-track-info-value" id="track-est-wait">
+            <%= myEstWait > 0 ? '~' + myEstWait + ' min' : '< 1 min' %>
+          </div>
+        </div>
+        <div class="sq-track-info-item">
+          <div class="sq-track-label">DEPARTMENT</div>
+          <div style="font-size:0.9rem;font-weight:600;color:white;margin-top:0.2rem;">
+            <%= entry.department_name %>
+          </div>
+        </div>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Patient details card -->
+    <div class="sq-card mb-2">
+      <div class="sq-card-header">
+        <h3>Your Registration Details</h3>
+        <span class="text-muted" style="font-size:0.8rem;">
+          Registered: <%= new Date(entry.registered_at).toLocaleTimeString('en-NG', {hour:'2-digit',minute:'2-digit'}) %>
+        </span>
+      </div>
+      <div class="sq-card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;">
+          <div>
+            <div class="sq-stat-label mb-1">Name</div>
+            <div class="fw-600"><%= entry.patient_name %></div>
+          </div>
+          <div>
+            <div class="sq-stat-label mb-1">Age / Sex</div>
+            <div class="fw-600"><%= entry.age %> / <%= entry.sex %></div>
+          </div>
+          <div>
+            <div class="sq-stat-label mb-1">Department</div>
+            <div class="fw-600"><%= entry.department_name %></div>
+          </div>
+          <div>
+            <div class="sq-stat-label mb-1">Complaint</div>
+            <div class="fw-600"><%= entry.complaint || '—' %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full queue list -->
+    <div class="sq-card">
+      <div class="sq-card-header">
+        <h3>Queue — <%= entry.department_name %></h3>
+        <span class="text-muted" style="font-size:0.8rem;">
+          Scroll to find your highlighted row
+        </span>
+      </div>
+
+      <div class="sq-table-wrap" style="border:none;box-shadow:none;border-radius:0;max-height:420px;overflow-y:auto;">
+        <table class="sq-table">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Patient</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Est. Wait</th>
+            </tr>
+          </thead>
+          <tbody id="track-queue-tbody">
+            <% if (fullQueue.length === 0) { %>
+              <tr>
+                <td colspan="5" class="text-center text-muted" style="padding:2rem;">
+                  No active queue entries
+                </td>
+              </tr>
+            <% } else { %>
+              <% fullQueue.forEach(row => { %>
+                <%
+                  const isSelf = row.token === token;
+                  const rowClass = isSelf ? 'row-self' : (row.status === 'called' ? 'row-called' : 'row-waiting');
+                  const estWait = row.status === 'called'
+                    ? '— Now calling'
+                    : (row.est_wait > 0 ? '~' + row.est_wait + ' min' : '< 1 min');
+                %>
+                <tr class="<%= rowClass %>" id="<%= isSelf ? 'my-row' : '' %>">
+                  <td class="queue-number">
+                    <%= String(row.queue_number).padStart(3,'0') %>
+                    <% if (isSelf) { %>
+                      <span class="sq-badge" style="background:#FFF3CD;color:#856404;margin-left:0.4rem;font-size:0.7rem;">YOU</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <%
+                      // Show full name to patient themselves, masked to others
+                      const nameParts = row.patient_name.trim().split(' ');
+                      const displayName = isSelf
+                        ? row.patient_name
+                        : nameParts.map((p,i) => i===0 ? p : p.charAt(0)+'*'.repeat(Math.max(0,p.length-1))).join(' ');
+                    %>
+                    <%= displayName %>
+                  </td>
+                  <td><%= row.department_name %></td>
+                  <td>
+                    <% if (row.status === 'waiting') { %>
+                      <span class="sq-badge sq-badge-waiting">Waiting</span>
+                    <% } else if (row.status === 'called') { %>
+                      <span class="sq-badge sq-badge-called">▶ Called</span>
+                    <% } %>
+                  </td>
+                  <td class="font-mono text-muted"><%= estWait %></td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Helpful note -->
+    <div style="text-align:center;margin-top:1.25rem;">
+      <p class="text-muted" style="font-size:0.82rem;">
+        This page updates automatically in real time. You do not need to refresh it.<br>
+        Keep this link saved — you can check your position from anywhere.
+      </p>
+    </div>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket-client.js"></script>
+  <script>
+    // Scroll to patient's own row on page load
+    window.addEventListener('load', function () {
+      const myRow = document.getElementById('my-row');
+      if (myRow) {
+        myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  </script>
+</body>
+</html>

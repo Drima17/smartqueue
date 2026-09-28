@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartQueue — Waiting Room Display</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* ── Display-page specific overrides ──────────────────────
+       Optimised for large TV/monitor screens in waiting rooms
+    ────────────────────────────────────────────────────────── */
+    body {
+      background: var(--sq-white);
+      overflow: hidden; /* no scrollbars on the display screen */
+    }
+
+    .sq-display-page {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .sq-display-header {
+      background: var(--sq-accent);
+      color: white;
+      padding: 1rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      border-bottom: 4px solid var(--sq-accent-dark);
+    }
+
+    .sq-display-header-left h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.01em;
+    }
+
+    .sq-display-header-left p {
+      color: rgba(255,255,255,0.78);
+      font-size: 0.85rem;
+      margin-top: 0.1rem;
+    }
+
+    .sq-display-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 0.06em;
+      line-height: 1;
+    }
+
+    .sq-display-date {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.72);
+      text-align: right;
+      margin-top: 0.3rem;
+    }
+
+    /* Currently calling banner */
+    .sq-calling-banner {
+      background: var(--sq-amber);
+      color: white;
+      padding: 0.6rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      min-height: 52px;
+    }
+
+    .sq-calling-banner-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      opacity: 0.9;
+    }
+
+    .sq-calling-banner-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+    }
+
+    .sq-calling-banner-dept {
+      font-size: 0.9rem;
+      font-weight: 600;
+      opacity: 0.95;
+    }
+
+    .sq-calling-empty {
+      font-size: 0.9rem;
+      opacity: 0.75;
+      font-style: italic;
+    }
+
+    /* Department tabs */
+    .sq-dept-tabs {
+      display: flex;
+      background: var(--sq-surface-2);
+      border-bottom: 1px solid var(--sq-border);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+
+    .sq-dept-tab {
+      padding: 0.65rem 1.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--sq-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: var(--sq-transition);
+      user-select: none;
+    }
+
+    .sq-dept-tab.active {
+      color: var(--sq-accent);
+      border-bottom-color: var(--sq-accent);
+      background: var(--sq-white);
+    }
+
+    /* Table panels */
+    .sq-display-panels {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sq-display-panel {
+      display: none;
+      height: 100%;
+      overflow-y: auto;
+    }
+
+    .sq-display-panel.active { display: block; }
+
+    /* Large display table */
+    .sq-display-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .sq-display-table thead {
+      background: var(--sq-surface-2);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .sq-display-table thead th {
+      padding: 0.85rem 1.5rem;
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--sq-accent);
+      border-bottom: 2px solid var(--sq-border);
+    }
+
+    .sq-display-table tbody tr {
+      border-bottom: 1px solid var(--sq-border);
+      transition: background 0.3s ease;
+    }
+
+    .sq-display-table tbody tr:nth-child(even) {
+      background: var(--sq-surface);
+    }
+
+    .sq-display-table tbody tr.display-called {
+      background: var(--sq-amber-lt) !important;
+      animation: pulse-row 2s ease-in-out infinite;
+    }
+
+    .sq-display-table tbody td {
+      padding: 1rem 1.5rem;
+      font-size: 1.05rem;
+      vertical-align: middle;
+    }
+
+    .display-queue-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--sq-accent);
+      width: 100px;
+    }
+
+    .display-called .display-queue-num {
+      color: #92400E;
+    }
+
+    .display-name {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--sq-text);
+    }
+
+    .display-dept {
+      font-size: 0.9rem;
+      color: var(--sq-text-2);
+    }
+
+    .display-wait {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      color: var(--sq-muted);
+    }
+
+    /* Footer bar */
+    .sq-display-footer {
+      background: var(--sq-surface-2);
+      border-top: 1px solid var(--sq-border);
+      padding: 0.55rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .sq-display-footer p {
+      font-size: 0.78rem;
+      color: var(--sq-muted);
+    }
+
+    /* Empty state */
+    .display-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--sq-muted);
+      padding: 3rem;
+      text-align: center;
+    }
+
+    .display-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body data-page="display">
+
+  <div class="sq-display-page">
+
+    <!-- Header -->
+    <div class="sq-display-header">
+      <div class="sq-display-header-left">
+        <h1>🏥 SmartQueue — Outpatient Department</h1>
+        <p>Patient Queue Display &nbsp;|&nbsp; Please wait to be called by your queue number</p>
+      </div>
+      <div style="text-align:right;">
+        <div class="sq-display-clock" id="sq-clock">00:00:00</div>
+        <div class="sq-display-date" id="sq-date"></div>
+      </div>
+    </div>
+
+    <!-- Currently Calling Banner -->
+    <%
+      const calledEntries = queue.filter(q => q.status === 'called');
+    %>
+    <div class="sq-calling-banner" id="calling-banner">
+      <div>
+        <div class="sq-calling-banner-label">▶ NOW CALLING</div>
+      </div>
+      <% if (calledEntries.length > 0) { %>
+        <div class="sq-calling-banner-number" id="calling-number">
+          <%= String(calledEntries[0].queue_number).padStart(3,'0') %>
+        </div>
+        <div class="sq-calling-banner-dept" id="calling-dept">
+          <%= calledEntries[0].department_name %>
+        </div>
+      <% } else { %>
+        <div class="sq-calling-empty" id="calling-number">
+          No patient currently being called
+        </div>
+        <div id="calling-dept"></div>
+      <% } %>
+      <span id="sq-live-indicator" class="sq-live-badge"
+            style="background:rgba(255,255,255,0.2);color:white;">
+        <span class="sq-live-dot" style="background:white;"></span> LIVE
+      </span>
+    </div>
+
+    <!-- Department tabs -->
+    <div class="sq-dept-tabs" id="dept-tabs">
+      <div class="sq-dept-tab active" data-panel="all" onclick="switchTab(this,'all')">
+        All Departments
+      </div>
+      <% departments.forEach((dept, i) => { %>
+        <div
+          class="sq-dept-tab"
+          data-panel="dept-<%= dept.department_id %>"
+          data-dept-id="<%= dept.department_id %>"
+          onclick="switchTab(this,'dept-<%= dept.department_id %>')"
+        >
+          <%= dept.name %>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Queue panels -->
+    <div class="sq-display-panels">
+
+      <!-- ALL DEPARTMENTS panel -->
+      <div class="sq-display-panel active" id="panel-all">
+        <% const allQueue = queue.slice(0, 20); %>
+        <% if (allQueue.length === 0) { %>
+          <div class="display-empty">
+            <div class="display-empty-icon">🪑</div>
+            <h3>No patients in queue</h3>
+            <p>The waiting room is currently empty.</p>
+          </div>
+        <% } else { %>
+          <table class="sq-display-table">
+            <thead>
+              <tr>
+                <th>Queue No.</th>
+                <th>Patient</th>
+                <th>Department</th>
+                <th>Status</th>
+                <th>Est. Wait</th>
+              </tr>
+            </thead>
+            <tbody id="display-tbody-all">
+              <% allQueue.forEach(entry => { %>
+                <tr class="<%= entry.status === 'called' ? 'display-called' : '' %>">
+                  <td class="display-queue-num">
+                    <%= String(entry.queue_number).padStart(3,'0') %>
+                  </td>
+                  <td class="display-name">
+                    <%
+                      const parts = entry.patient_name.trim().split(' ');
+                      const masked = parts.map((p,i) => i===0 ? p : p.charAt(0)+'*'.repeat(Math.max(0,p.length-1))).join(' ');
+                    %>
+                    <%= masked %>
+                  </td>
+                  <td class="display-dept"><%= entry.department_name %></td>
+                  <td>
+                    <% if (entry.status === 'called') { %>
+                      <span class="sq-badge sq-badge-called">▶ NOW CALLING</span>
+                    <% } else { %>
+                      <span class="sq-badge sq-badge-waiting">Waiting</span>
+                    <% } %>
+                  </td>
+                  <td class="display-wait">
+                    <%= entry.status === 'called'
+                          ? '— Proceed now'
+                          : (entry.est_wait > 0 ? '~' + entry.est_wait + ' min' : '< 1 min') %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+
+      <!-- PER-DEPARTMENT panels -->
+      <% departments.forEach(dept => { %>
+        <%
+          const deptQueue = queue
+            .filter(q => q.department_id === dept.department_id)
+            .slice(0, 20);
+        %>
+        <div
+          class="sq-display-panel"
+          id="panel-dept-<%= dept.department_id %>"
+          data-dept-id="<%= dept.department_id %>"
+        >
+          <% if (deptQueue.length === 0) { %>
+            <div class="display-empty">
+              <div class="display-empty-icon">🪑</div>
+              <h3>No patients waiting in <%= dept.name %></h3>
+            </div>
+          <% } else { %>
+            <table class="sq-display-table">
+              <thead>
+                <tr>
+                  <th>Queue No.</th>
+                  <th>Patient</th>
+                  <th>Department</th>
+                  <th>Status</th>
+                  <th>Est. Wait</th>
+                </tr>
+              </thead>
+              <tbody id="display-tbody-<%= dept.department_id %>">
+                <% deptQueue.forEach(entry => { %>
+                  <tr class="<%= entry.status === 'called' ? 'display-called' : '' %>">
+                    <td class="display-queue-num">
+                      <%= String(entry.queue_number).padStart(3,'0') %>
+                    </td>
+                    <td class="display-name">
+                      <%
+                        const pts = entry.patient_name.trim().split(' ');
+                        const msk = pts.map((p,i)=>i===0?p:p.charAt(0)+'*'.repeat(Math.max(0,p.length-1))).join(' ');
+                      %>
+                      <%= msk %>
+                    </td>
+                    <td class="display-dept"><%= entry.department_name %></td>
+                    <td>
+                      <% if (entry.status === 'called') { %>
+                        <span class="sq-badge sq-badge-called">▶ NOW CALLING</span>
+                      <% } else { %>
+                        <span class="sq-badge sq-badge-waiting">Waiting</span>
+                      <% } %>
+                    </td>
+                    <td class="display-wait">
+                      <%= entry.status === 'called'
+                            ? '— Proceed now'
+                            : (entry.est_wait > 0 ? '~' + entry.est_wait + ' min' : '< 1 min') %>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
+        </div>
+      <% }) %>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="sq-display-footer">
+      <p>🏥 SmartQueue Hospital Outpatient Queue Management System</p>
+      <p>Please have your queue slip ready when your number is called</p>
+      <p id="sq-live-footer" style="color:var(--sq-green);font-weight:600;">
+        ● System Online
+      </p>
+    </div>
+
+  </div><!-- end sq-display-page -->
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/socket-client.js"></script>
+  <script>
+    // ── Tab switching ──────────────────────────────────────────
+    function switchTab(tabEl, panelId) {
+      document.querySelectorAll('.sq-dept-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.sq-display-panel').forEach(p => p.classList.remove('active'));
+      tabEl.classList.add('active');
+      document.getElementById('panel-' + panelId).classList.add('active');
+    }
+
+    // ── Real-time: update calling banner ───────────────────────
+    const socket = io();
+
+    socket.on('queue-update', function (data) {
+      const queue = data.queue;
+
+      // Update calling banner
+      const called = queue.find(e => e.status === 'called');
+      const numEl  = document.getElementById('calling-number');
+      const deptEl = document.getElementById('calling-dept');
+
+      if (called && numEl) {
+        numEl.textContent = String(called.queue_number).padStart(3, '0');
+        if (deptEl) deptEl.textContent = called.department_name;
+      } else if (numEl) {
+        numEl.textContent = 'No patient currently being called';
+        if (deptEl) deptEl.textContent = '';
+      }
+
+      // Update the all-departments tbody
+      updateDisplayTbody('all', queue.slice(0, 20));
+
+      // Update per-department tbody
+      updateDisplayTbody(
+        data.department_id,
+        queue.filter(e => e.department_id === data.department_id).slice(0, 20)
+      );
+    });
+
+    function updateDisplayTbody(deptKey, entries) {
+      const tbody = document.getElementById(`display-tbody-${deptKey}`);
+      if (!tbody) return;
+
+      if (entries.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5">
+              <div class="display-empty">
+                <div class="display-empty-icon">🪑</div>
+                <h3>No patients in queue</h3>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      entries.forEach((entry, idx) => {
+        const parts   = entry.patient_name.trim().split(' ');
+        const masked  = parts.map((p,i)=>i===0?p:p.charAt(0)+'*'.repeat(Math.max(0,p.length-1))).join(' ');
+        const isCalled = entry.status === 'called';
+        const estWait  = isCalled
+          ? '— Proceed now'
+          : (entry.est_wait > 0 ? '~' + entry.est_wait + ' min' : '< 1 min');
+
+        const tr = document.createElement('tr');
+        tr.className = isCalled ? 'display-called sq-fade-in' : 'sq-fade-in';
+        tr.style.animationDelay = `${idx * 0.04}s`;
+        tr.innerHTML = `
+          <td class="display-queue-num">${String(entry.queue_number).padStart(3,'0')}</td>
+          <td class="display-name">${masked}</td>
+          <td class="display-dept">${entry.department_name}</td>
+          <td>
+            ${isCalled
+              ? '<span class="sq-badge sq-badge-called">▶ NOW CALLING</span>'
+              : '<span class="sq-badge sq-badge-waiting">Waiting</span>'}
+          </td>
+          <td class="display-wait">${estWait}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ── Live clock ─────────────────────────────────────────────
+    function tick() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      document.getElementById('sq-clock').textContent =
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      document.getElementById('sq-date').textContent =
+        now.toLocaleDateString('en-NG', {
+          weekday:'long', year:'numeric', month:'long', day:'numeric'
+        });
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    // ── Auto-refresh every 5 minutes as a safety net ───────────
+    setTimeout(() => location.reload(), 5 * 60 * 1000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "smartqueue",
+  "version": "1.0.0",
+  "description": "Real-Time Web-Based Hospital Outpatient Queue Management System",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "Arubi David Olikejenyohe",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "mysql2": "^3.11.0",
+    "socket.io": "^4.7.5",
+    "uuid": "^14.0.2"
+  }
+}
